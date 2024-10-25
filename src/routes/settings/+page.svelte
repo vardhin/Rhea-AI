@@ -1,15 +1,15 @@
 <script>
 	import { onMount} from 'svelte';
 	import ollama from 'ollama';
-	import { selectedModel } from '$lib/stores';
+	import { selectedModel, darkMode, serverIP } from '$lib/stores';
 	import NavBar from '../NavBar.svelte';
-	import { darkMode } from '$lib/stores';
-    import { goto } from '$app/navigation';
+	import { goto } from '$app/navigation';
 
 	let models = [];
 	let loading = true;
 	let error = null;
 	let isDarkMode = false;
+	let customIP = '';
 
 	darkMode.subscribe((value) => {
 		isDarkMode = value;
@@ -20,10 +20,20 @@
 			const modelList = await ollama.list();
 			models = modelList.models;
 			loading = false;
+
+			// Fetch the default IP and update the customIP
+			const defaultIP = await getDefaultIP();
+			customIP = defaultIP;
+			serverIP.set(defaultIP);
 		} catch (e) {
 			error = "Failed to fetch models. Make sure Ollama is running.";
 			loading = false;
 		}
+
+		// Fetch the current serverIP value
+		serverIP.subscribe(value => {
+			customIP = value;
+		});
 	});
 
 	async function selectModel(model) {
@@ -33,6 +43,21 @@
 		} catch (error) {
 			console.error('Navigation error:', error);
 		}
+	}
+
+	async function getDefaultIP() {
+		try {
+			const response = await fetch('http://localhost:3000/api/local-ip');
+			const data = await response.json();
+			return data.ip;
+		} catch (error) {
+			console.error('Error fetching local IP:', error);
+			return 'localhost';
+		}
+	}
+
+	function updateServerIP() {
+		serverIP.set(customIP);
 	}
 </script>
 
@@ -46,6 +71,19 @@
 <main class:dark-mode={isDarkMode}>
     <NavBar title="Settings" />
 	<h1>Available Models</h1>
+	
+	<!-- IP Address Input -->
+	<div class="ip-input">
+		<label for="server-ip">Server IP:</label>
+		<input 
+			type="text" 
+			id="server-ip" 
+			bind:value={customIP} 
+			placeholder="Enter server IP"
+		/>
+		<button on:click={updateServerIP}>Update IP</button>
+	</div>
+
 	{#if loading}
 		<p>Loading models...</p>
 	{:else if error}
@@ -65,31 +103,6 @@
 	:global(*) {
 		font-family: 'Quicksand', sans-serif;
 	}
-
-	
-    :root {
-    --bg-color: #ffffff;
-    --text-color: #333333;
-    --primary-color: #128C7E;
-    --secondary-color: #075E54;
-    --user-message-bg: #dcf8c6;
-    --ai-message-bg: #f0f0f0;
-    --input-bg: rgba(255, 255, 255, 0.8);
-    --input-border: #cccccc;
-    --scroll-thumb: rgba(0, 0, 0, 0.2);
-  }
-
-  .dark-mode {
-    --bg-color: #1a1a1a;
-    --text-color: #e0e0e0;
-    --primary-color: #2ecc71;
-    --secondary-color: #27ae60;
-    --user-message-bg: #2c3e50;
-    --ai-message-bg: #34495e;
-    --input-bg: rgba(30, 30, 30, 0.8);
-    --input-border: #555555;
-    --scroll-thumb: rgba(255, 255, 255, 0.2);
-  }
 
 
 	main {
@@ -134,5 +147,35 @@
 	/* Optional: Adjust specific elements for better readability */
 	:global(button) {
 		font-family: 'Arial', sans-serif;
+	}
+
+	.ip-input {
+		margin-bottom: 20px;
+	}
+
+	.ip-input label {
+		display: block;
+		margin-bottom: 5px;
+	}
+
+	.ip-input input {
+		width: 100%;
+		padding: 8px;
+		margin-bottom: 10px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+	}
+
+	.ip-input button {
+		padding: 8px 16px;
+		background-color: var(--primary-color);
+		color: white;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+	}
+
+	.ip-input button:hover {
+		background-color: var(--secondary-color);
 	}
 </style>

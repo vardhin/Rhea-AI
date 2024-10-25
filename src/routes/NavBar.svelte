@@ -5,11 +5,9 @@
 
 	// Import FontAwesome icons
 	import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
-	import { faArrowLeft, faSun, faMoon, faRedoAlt } from '@fortawesome/free-solid-svg-icons'; // Add reload icon
-	// Add this import for the thicker icons
-	import { faArrowLeft as faArrowLeftSolid, faSun as faSunSolid, faMoon as faMoonSolid, faRedoAlt as faRedoAltSolid } from '@fortawesome/free-solid-svg-icons';
-	import { faGear } from '@fortawesome/free-solid-svg-icons'; // Add settings icon
-	import { faGear as faGearSolid } from '@fortawesome/free-solid-svg-icons';
+	import { faArrowLeft, faSun, faMoon, faRedoAlt, faHome } from '@fortawesome/free-solid-svg-icons';
+	import { faArrowLeft as faArrowLeftSolid, faSun as faSunSolid, faMoon as faMoonSolid, faRedoAlt as faRedoAltSolid, faHome as faHomeSolid } from '@fortawesome/free-solid-svg-icons';
+	import { faGear, faGear as faGearSolid } from '@fortawesome/free-solid-svg-icons';
 
 	export let title = ''; // Ensure title is passed as a prop
 
@@ -33,10 +31,17 @@
 	const goToSettings = () => {
 		goto('/settings');
 	};
+
+	const goToHome = () => {
+		goto('/');
+	};
 </script>
 
 <nav class:dark-mode={isDarkMode}>
 	<div class="button-container">
+		<div class="home-button" on:click={goToHome}>
+			<FontAwesomeIcon icon={faHomeSolid} class="icon" />
+		</div>
 		<div class="settings-button" on:click={goToSettings}>
 			<FontAwesomeIcon icon={faGearSolid} class="icon" />
 		</div>
@@ -129,17 +134,17 @@
 	}
 
 	.theme-button {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: radial-gradient(circle, #ffb74d 30%, #ffa726 100%); /* light mode: amber gradient */
-    border: none;
-    box-shadow: 0 0 10px rgba(255, 183, 77, 0.65), 0 0 20px rgba(255, 183, 77, 0.65), 0 0 30px rgba(255, 183, 77, 0.65); /* light mode: amber shadows */
-    transition: all 0.3s ease;
-}
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: radial-gradient(circle, #ffb74d 30%, #ffa726 100%); /* light mode: amber gradient */
+		border: none;
+		box-shadow: 0 0 10px rgba(255, 183, 77, 0.65), 0 0 20px rgba(255, 183, 77, 0.65), 0 0 30px rgba(255, 183, 77, 0.65); /* light mode: amber shadows */
+		transition: all 0.3s ease;
+	}
 
 	.theme-button:hover {
 		transform: scale(1.1);
@@ -155,13 +160,13 @@
 	}
 
 	@keyframes sunShine {
-        0%, 100% {
-            box-shadow: 0 0 10px rgba(255, 183, 77, 0.65), 0 0 20px rgba(255, 183, 77, 0.65), 0 0 30px rgba(255, 183, 77, 0.65); /* light mode: amber */
-        }
-        50% {
-            box-shadow: 0 0 15px rgba(255, 183, 77, 1), 0 0 30px rgba(255, 183, 77, 1), 0 0 45px rgba(255, 183, 77, 1); /* light mode: amber */
-        }
-    }
+		0%, 100% {
+			box-shadow: 0 0 10px rgba(255, 183, 77, 0.65), 0 0 20px rgba(255, 183, 77, 0.65), 0 0 30px rgba(255, 183, 77, 0.65); /* light mode: amber */
+		}
+		50% {
+			box-shadow: 0 0 15px rgba(255, 183, 77, 1), 0 0 30px rgba(255, 183, 77, 1), 0 0 45px rgba(255, 183, 77, 1); /* light mode: amber */
+		}
+	}
 
 	@keyframes moonGlow {
 		0%, 100% {
@@ -181,6 +186,16 @@
 	}
 
 	.settings-button {
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		padding: 0 3px;
+		margin: 0 3px;
+	}
+
+	.home-button,
+	.settings-button,
+	.reload-button {
 		cursor: pointer;
 		display: flex;
 		align-items: center;

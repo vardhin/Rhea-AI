@@ -1,12 +1,27 @@
 const express = require('express');
 const cors = require('cors');
+const os = require('os');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const OLLAMA_HOST = 'http://192.168.150.99';
+function getLocalIpAddress() {
+    const interfaces = os.networkInterfaces();
+    for (const interfaceName of Object.keys(interfaces)) {
+        const interface = interfaces[interfaceName];
+        for (const iface of interface) {
+            // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return '127.0.0.1'; // Fallback to localhost if no suitable IP is found
+}
+
+const OLLAMA_HOST = `http://${getLocalIpAddress()}:11434`;
 
 // Add this line at the top of your file
 let fetch;
@@ -114,6 +129,12 @@ async function setupServer() {
                 res.end();
             }
         }
+    });
+
+    // Add this new endpoint
+    app.get('/api/local-ip', (req, res) => {
+        const localIp = getLocalIpAddress();
+        res.json({ ip: localIp });
     });
 
     const PORT = process.env.PORT || 3000;

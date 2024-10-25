@@ -5,11 +5,15 @@
   import FaPaperPlane from 'svelte-icons/fa/FaPaperPlane.svelte';
   import FaChevronDown from 'svelte-icons/fa/FaChevronDown.svelte';
   import NavBar from './NavBar.svelte';
-  import { darkMode, selectedModel } from '$lib/stores';
+  import { darkMode, selectedModel, serverIP } from '$lib/stores';
   import { spring } from 'svelte/motion'; // Add this import
   import { writable } from 'svelte/store'; // Import writable for messages
 
-  const SERVER_URL = 'http://192.168.150.99:3000';
+  let SERVER_URL = '';
+
+  serverIP.subscribe(value => {
+    SERVER_URL = `http://${value}:3000`;
+  });
 
   let prompt = '';
   let messages = writable([]); // Make messages a writable store
@@ -82,9 +86,27 @@
   }
 
   onMount(async () => {
+    if (!$serverIP) {
+      const defaultIP = await getDefaultIP();
+      serverIP.set(defaultIP);
+    }
     await checkServerConnection();
     await fetchModels();
   });
+
+  async function getDefaultIP() {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/local-ip`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.ip;
+    } catch (error) {
+      console.error('Error fetching local IP:', error);
+      return '127.0.0.1';
+    }
+  }
 
   async function checkServerConnection() {
     try {
@@ -331,31 +353,7 @@ class="ai-chat"
     :global(*) {
     font-family: 'Quicksand', sans-serif;
   }
-
-  :root {
-    --bg-color: #ffffff;
-    --text-color: #333333;
-    --primary-color: #128C7E;
-    --secondary-color: #075E54;
-    --user-message-bg: #dcf8c6;
-    --ai-message-bg: #f0f0f0;
-    --input-bg: rgba(255, 255, 255, 0.8);
-    --input-border: #cccccc;
-    --scroll-thumb: rgba(0, 0, 0, 0.2);
-  }
-
-  .dark-mode {
-    --bg-color: #1a1a1a;
-    --text-color: #e0e0e0;
-    --primary-color: #2ecc71;
-    --secondary-color: #27ae60;
-    --user-message-bg: #2c3e50;
-    --ai-message-bg: #34495e;
-    --input-bg: rgba(30, 30, 30, 0.8);
-    --input-border: #555555;
-    --scroll-thumb: rgba(255, 255, 255, 0.2);
-  }
-
+  
   .ai-chat {
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -568,6 +566,8 @@ class="ai-chat"
     line-height: 1.4; /* Adjust line height for cursive font */
   }
   </style>
+
+
 
 
 
