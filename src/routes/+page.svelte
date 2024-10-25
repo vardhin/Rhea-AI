@@ -34,6 +34,8 @@
   const SCROLL_INTERVAL = 600; // ms between scroll updates
 
   let textareaElement;
+  let formElement;
+  let isComposing = false; // Add this line to track composition events
 
   const MAX_TEXTAREA_HEIGHT = '100px'; // Set a maximum height for the textarea
 
@@ -136,6 +138,13 @@
     }
   }
 
+  function handleSubmit(event) {
+    event.preventDefault();
+    if (!isComposing) {
+      generateResponse();
+    }
+  }
+
   async function generateResponse() {
     if (!serverReady || !prompt.trim()) return;
 
@@ -198,6 +207,7 @@
       cancelScheduledScroll();
       smoothScrollToBottom();
       resetTextarea();
+      // Remove the keepFocusOnTextarea() call from here
     }
   }
 
@@ -266,6 +276,14 @@
     }
   }
 
+  function handleCompositionStart() {
+    isComposing = true;
+  }
+
+  function handleCompositionEnd() {
+    isComposing = false;
+  }
+
   // Function to sanitize and format message content
   function sanitizeMessageContent(content) {
     // Replace line breaks with <br> for proper HTML formatting
@@ -324,7 +342,7 @@ class="ai-chat"
   {/if}
 
   <footer class="input-area glass" class:keyboard-visible={isKeyboardVisible}>
-    <form on:submit|preventDefault={generateResponse}>
+    <form bind:this={formElement} on:submit={handleSubmit}>
       <textarea
         bind:this={textareaElement}
         bind:value={prompt}
@@ -334,14 +352,20 @@ class="ai-chat"
         on:input={resetTextarea}
         on:focus={handleFocus}
         on:blur={handleBlur}
+        on:compositionstart={handleCompositionStart}
+        on:compositionend={handleCompositionEnd}
         on:keydown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
+          if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
             e.preventDefault();
-            generateResponse();
+            handleSubmit(e);
           }
         }}
       ></textarea>
-      <button type="submit" disabled={loading || !prompt.trim() || !ollamaReady} class="send-button glassmorphic">
+      <button 
+        type="submit" 
+        disabled={loading || !prompt.trim() || !ollamaReady} 
+        class="send-button glassmorphic"
+      >
         <div class="icon">
           <FaPaperPlane />
         </div>
@@ -566,21 +590,3 @@ class="ai-chat"
     line-height: 1.4; /* Adjust line height for cursive font */
   }
   </style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,6 +1,5 @@
 <script>
 	import { onMount} from 'svelte';
-	import ollama from 'ollama';
 	import { selectedModel, darkMode, serverIP } from '$lib/stores';
 	import NavBar from '../NavBar.svelte';
 	import { goto } from '$app/navigation';
@@ -10,31 +9,53 @@
 	let error = null;
 	let isDarkMode = false;
 	let customIP = '';
+	let SERVER_URL = '';
 
 	darkMode.subscribe((value) => {
 		isDarkMode = value;
 	});
 
-	onMount(async () => {
-		try {
-			const modelList = await ollama.list();
-			models = modelList.models;
-			loading = false;
+	serverIP.subscribe((value) => {
+		customIP = value;
+		SERVER_URL = `http://${value}:3000`;
+	});
 
-			// Fetch the default IP and update the customIP
+	onMount(async () => {
+		if (!$serverIP) {
 			const defaultIP = await getDefaultIP();
-			customIP = defaultIP;
 			serverIP.set(defaultIP);
+		}
+		fetchModels();
+	});
+
+	async function getDefaultIP() {
+		try {
+			const response = await fetch(`${SERVER_URL}/api/local-ip`);
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			const data = await response.json();
+			return data.ip;
+		} catch (error) {
+			console.error('Error fetching local IP:', error);
+			return '127.0.0.1';
+		}
+	}
+
+	async function fetchModels() {
+		try {
+			const response = await fetch(`${SERVER_URL}/api/models`);
+			if (response.ok) {
+				models = await response.json();
+			} else {
+				throw new Error('Failed to fetch models');
+			}
+			loading = false;
 		} catch (e) {
-			error = "Failed to fetch models. Make sure Ollama is running.";
+			error = "Failed to fetch models. Make sure the server is running and the IP is correct.";
 			loading = false;
 		}
-
-		// Fetch the current serverIP value
-		serverIP.subscribe(value => {
-			customIP = value;
-		});
-	});
+	}
 
 	async function selectModel(model) {
 		selectedModel.set(model.name);
@@ -45,19 +66,10 @@
 		}
 	}
 
-	async function getDefaultIP() {
-		try {
-			const response = await fetch('http://localhost:3000/api/local-ip');
-			const data = await response.json();
-			return data.ip;
-		} catch (error) {
-			console.error('Error fetching local IP:', error);
-			return 'localhost';
-		}
-	}
-
 	function updateServerIP() {
 		serverIP.set(customIP);
+		SERVER_URL = `http://${customIP}:3000`;
+		fetchModels(); // Refetch models after updating IP
 	}
 </script>
 
