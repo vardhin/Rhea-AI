@@ -48,7 +48,7 @@ async function setupServer() {
         }
     });
 
-    // Get available models
+    // Update the existing /api/models endpoint
     app.get('/api/models', async(req, res) => {
         try {
             const response = await fetch(`${OLLAMA_HOST}/api/tags`);
