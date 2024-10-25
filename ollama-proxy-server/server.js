@@ -21,7 +21,7 @@ function getLocalIpAddress() {
     return '127.0.0.1'; // Fallback to localhost if no suitable IP is found
 }
 
-const OLLAMA_HOST = `http://${getLocalIpAddress()}:11434`;
+const OLLAMA_HOST = process.env.OLLAMA_HOST || `http://${getLocalIpAddress()}`;
 
 // Add this line at the top of your file
 let fetch;
@@ -35,32 +35,32 @@ async function setupServer() {
     // Check Ollama connection
     app.get('/api/check-connection', async(req, res) => {
         try {
-            const response = await fetch(`${OLLAMA_HOST}/api/tags`);
+            const response = await fetch(`${OLLAMA_HOST}/api/tags`, { timeout: 5000 });
             if (response.ok) {
                 const data = await response.json();
                 res.json({ status: 'connected', data });
             } else {
-                res.status(response.status).json({ status: 'error', message: 'Failed to connect to Ollama' });
+                res.status(response.status).json({ status: 'error', message: `Failed to connect to Ollama: ${response.statusText}` });
             }
         } catch (error) {
             console.error('Error checking Ollama connection:', error);
-            res.status(500).json({ status: 'error', message: 'Internal server error' });
+            res.status(500).json({ status: 'error', message: `Failed to connect to Ollama at ${OLLAMA_HOST}: ${error.message}` });
         }
     });
 
     // Update the existing /api/models endpoint
     app.get('/api/models', async(req, res) => {
         try {
-            const response = await fetch(`${OLLAMA_HOST}/api/tags`);
+            const response = await fetch(`${OLLAMA_HOST}/api/tags`, { timeout: 5000 });
             if (response.ok) {
                 const data = await response.json();
                 res.json(data.models);
             } else {
-                res.status(response.status).json({ error: 'Failed to fetch models' });
+                res.status(response.status).json({ error: `Failed to fetch models: ${response.statusText}` });
             }
         } catch (error) {
             console.error('Error fetching models:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ error: `Failed to fetch models from ${OLLAMA_HOST}: ${error.message}` });
         }
     });
 
@@ -140,6 +140,7 @@ async function setupServer() {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Proxy server running on port ${PORT}`);
+        console.log(`Attempting to connect to Ollama at ${OLLAMA_HOST}`);
     });
 }
 
