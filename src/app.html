@@ -1,12 +1,40 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		%sveltekit.head%
-	</head>
-	<body data-sveltekit-preload-data="hover">
-		<div style="display: contents">%sveltekit.body%</div>
-	</body>
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" /> %sveltekit.head%
+</head>
+
+<body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+</body>
+
 </html>
+
+<style>
+     :root {
+        --bg-color: #ffffff;
+        --text-color: #333333;
+        --primary-color: #128C7E;
+        --secondary-color: #075E54;
+        --user-message-bg: #dcf8c6;
+        --ai-message-bg: #f0f0f0;
+        --input-bg: rgba(255, 255, 255, 0.8);
+        --input-border: #cccccc;
+        --scroll-thumb: rgba(0, 0, 0, 0.2);
+    }
+    
+    .dark-mode {
+        --bg-color: #1a1a1a;
+        --text-color: #e0e0e0;
+        --primary-color: #2ecc71;
+        --secondary-color: #27ae60;
+        --user-message-bg: #2c3e50;
+        --ai-message-bg: #34495e;
+        --input-bg: rgba(30, 30, 30, 0.8);
+        --input-border: #555555;
+        --scroll-thumb: rgba(255, 255, 255, 0.2);
+    }
+</style>

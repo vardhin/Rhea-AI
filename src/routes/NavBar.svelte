@@ -69,7 +69,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		background-color: var(--navbar-bg-color);
+		background-color: var(--bg-color);
 		color: var(--navbar-text-color);
 		padding: 5px 10px;
 		height: 60px; /* Increased from 50px to 60px */
@@ -77,7 +77,7 @@
 		transition:
 			background-color 0.3s ease,
 			color 0.3s ease;
-		backdrop-filter: blur(2px);
+		backdrop-filter: blur(10px);
 		font-family: 'Orbitron', sans-serif;
 		border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 		box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);

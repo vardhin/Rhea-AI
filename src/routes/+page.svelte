@@ -1,25 +1,27 @@
 <script>
-  import { onMount, tick } from 'svelte';
-  import ollama from 'ollama';
-  import { fade, fly, scale, slide } from 'svelte/transition';
-  import { spring } from 'svelte/motion';
+  import { onMount } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import FaPaperPlane from 'svelte-icons/fa/FaPaperPlane.svelte';
   import FaChevronDown from 'svelte-icons/fa/FaChevronDown.svelte';
   import NavBar from './NavBar.svelte';
-  import { darkMode } from '$lib/stores';
-  import { selectedModel } from '$lib/stores';
+  import { darkMode, selectedModel } from '$lib/stores';
+  import { spring } from 'svelte/motion'; // Add this import
+  import { writable } from 'svelte/store'; // Import writable for messages
+
+  const SERVER_URL = 'http://192.168.150.99:3000';
 
   let prompt = '';
-  let messages = [];
+  let messages = writable([]); // Make messages a writable store
   let loading = false;
-  let ollamaReady = false;
+  let serverReady = false;
+  let ollamaReady = false; // Add this line
   let messageContainer;
   let isAtBottom = true;
   let showScrollButton = false;
   let currentStreamingMessage = '';
   let messageHistory = [];
-  let isDarkMode = false;
+  let isDarkMode;
 
   const pageLoaded = spring(0);
 
@@ -37,150 +39,152 @@
     currentModel = value;
   });
 
-  function resetTextarea() {
-    if (textareaElement) {
-      textareaElement.style.height = 'auto';
-      const newHeight = Math.min(textareaElement.scrollHeight, parseInt(MAX_TEXTAREA_HEIGHT));
-      textareaElement.style.height = `${newHeight}px`;
+  let models = []; // Add this line to define the models variable
+
+  let viewportHeight;
+  let isKeyboardVisible = false;
+
+  // Subscribe to the darkMode store
+  darkMode.subscribe(value => {
+    isDarkMode = value;
+  });
+
+  onMount(() => {
+    updateViewportHeight();
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  });
+
+  function updateViewportHeight() {
+    viewportHeight = window.innerHeight;
+  }
+
+  function handleResize() {
+    const newViewportHeight = window.innerHeight;
+    if (newViewportHeight < viewportHeight) {
+      // Keyboard is likely visible
+      isKeyboardVisible = true;
+    } else {
+      // Keyboard is likely hidden
+      isKeyboardVisible = false;
     }
+    viewportHeight = newViewportHeight;
+  }
+
+  function handleFocus() {
+    // You can add additional logic here if needed
+  }
+
+  function handleBlur() {
+    // You can add additional logic here if needed
   }
 
   onMount(async () => {
-    try {
-      await ollama.list();
-      ollamaReady = true;
-    } catch (error) {
-      console.error('Ollama check failed:', error);
-      addMessage('system', 'Error: Ollama service is not available. Please make sure it\'s running.');
-    }
-    pageLoaded.set(1);
-    resetTextarea(); // Reset textarea height on mount
+    await checkServerConnection();
+    await fetchModels();
   });
 
-  darkMode.subscribe((value) => {
-		isDarkMode = value;
-	});
+  async function checkServerConnection() {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/check-connection`);
+      const data = await response.json();
+      serverReady = data.status === 'connected';
+      ollamaReady = serverReady; // Set ollamaReady based on server connection
+      if (serverReady) {
+        addMessage('system', 'Successfully connected to server.');
+      } else {
+        addMessage('system', 'Failed to connect to server.');
+      }
+    } catch (error) {
+      console.error('Error checking server connection:', error);
+      addMessage('system', 'Error connecting to server.');
+      serverReady = false;
+      ollamaReady = false;
+    }
+  }
 
-  function smoothScrollToBottom() {
-    if (messageContainer) {
-      const scrollTarget = messageContainer.scrollHeight - messageContainer.clientHeight;
-      messageContainer.scrollTo({
-        top: scrollTarget,
-        behavior: 'smooth'
-      });
+  async function fetchModels() {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/models`);
+      models = await response.json();
+    } catch (error) {
+      console.error('Error fetching models:', error);
     }
   }
 
   async function generateResponse() {
-    if (!ollamaReady) {
-      addMessage('system', 'Error: Ollama service is not ready. Please try again later.');
-      return;
-    }
-
-    if (!prompt.trim()) return;
+    if (!serverReady || !prompt.trim()) return;
 
     const userMessage = prompt.trim();
     addMessage('user', userMessage);
     prompt = '';
     loading = true;
 
-    let buffer = '';
-    let isInBoldSection = false;
-
     try {
-      const stream = await ollama.chat({
-        model: currentModel,
-        messages: [...messageHistory, { role: 'user', content: userMessage }],
-        stream: true,
+      const response = await fetch(`${SERVER_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: currentModel,
+          messages: $messages.filter(m => m.role !== 'system').concat({ role: 'user', content: userMessage }),
+        }),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      let aiResponse = '';
       const aiMessageId = Date.now();
       addMessage('ai', '', aiMessageId);
-      scheduleScroll(); // Initial scroll when AI starts responding
-      
-      for await (const chunk of stream) {
-        let word = chunk.message.content;
-        buffer += word;
 
-        while (buffer.includes('**')) {
-          const startIndex = buffer.indexOf('**');
-          const endIndex = buffer.indexOf('**', startIndex + 2);
-
-          if (endIndex !== -1) {
-            // We have a complete bold section
-            const boldText = buffer.slice(startIndex + 2, endIndex);
-            const beforeBold = buffer.slice(0, startIndex);
-            const afterBold = buffer.slice(endIndex + 2);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const content = line.slice(6);
+            if (content === '[DONE]') break;
             
-            messages = messages.map(msg => 
-              msg.id === aiMessageId 
-                ? { ...msg, content: msg.content + beforeBold + '<strong>' + boldText + '</strong>' } 
+            aiResponse += content;
+            messages.update(msgs => msgs.map(msg =>
+              msg.id === aiMessageId
+                ? { ...msg, content: aiResponse }
                 : msg
-            );
-            
-            buffer = afterBold;
-          } else {
-            // Incomplete bold section, wait for more chunks
-            break;
+            ));
+            scheduleScroll();
           }
         }
-
-        // Append any remaining non-bold text
-        if (buffer && !buffer.includes('**')) {
-          messages = messages.map(msg => 
-            msg.id === aiMessageId 
-              ? { ...msg, content: msg.content + buffer } 
-              : msg
-          );
-          buffer = '';
-        }
-
-        // Remove this line to prevent constant re-rendering
-        // await tick();
-        // smoothScrollToBottom(); // Scroll after each chunk
-
-        scheduleScroll(); // Schedule a scroll after processing each chunk
       }
-      
-      // Append any remaining text in the buffer
-      if (buffer) {
-        messages = messages.map(msg => 
-          msg.id === aiMessageId 
-            ? { ...msg, content: msg.content + buffer } 
-            : msg
-        );
-      }
-      
-      // Update message history after streaming is complete
-      messageHistory = [...messageHistory, 
-        { role: 'user', content: userMessage },
-        { role: 'ai', content: messages[messages.length - 1].content }
-      ];
+
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error in generateResponse:', error);
       addMessage('system', `An error occurred: ${error.message}`);
     } finally {
-      currentStreamingMessage = '';
       loading = false;
       cancelScheduledScroll();
       smoothScrollToBottom();
-      
-      // Animate textarea back to one row
-      if (textareaElement) {
-        textareaElement.style.transition = 'height 0.3s ease';
-        textareaElement.style.height = 'auto';
-        setTimeout(() => {
-          textareaElement.style.transition = '';
-        }, 300);
-      }
-      resetTextarea(); // Reset textarea height after sending message
+      resetTextarea();
     }
   }
 
   function addMessage(role, content, id = Date.now()) {
-    messages = [...messages, { role, content, id }];
+    messages.update(msgs => [...msgs, { role, content, id }]);
     setTimeout(() => {
-      smoothScrollToBottom(); // Scroll after adding a new message
+      smoothScrollToBottom();
+      // Force a layout recalculation
+      void messageContainer.offsetHeight;
     }, 0);
   }
 
@@ -205,6 +209,9 @@
         scrollTimeout = null;
         lastScrollTime = Date.now();
       }, SCROLL_INTERVAL);
+    } else {
+      // Immediately scroll if within interval using requestAnimationFrame
+      requestAnimationFrame(smoothScrollToBottom);
     }
   }
 
@@ -214,6 +221,38 @@
       scrollTimeout = null;
     }
   }
+
+  function smoothScrollToBottom() {
+    if (messageContainer) {
+      messageContainer.scrollTo({
+        top: messageContainer.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }
+
+  function handleTouchStart() {
+    // Add this function definition
+    // Implement any touch start logic if needed
+  }
+
+  function resetTextarea() {
+    // Add this function definition
+    if (textareaElement) {
+      textareaElement.style.height = 'auto';
+      textareaElement.style.height = Math.min(textareaElement.scrollHeight, parseInt(MAX_TEXTAREA_HEIGHT)) + 'px';
+    }
+  }
+
+  // Function to sanitize and format message content
+  function sanitizeMessageContent(content) {
+    // Replace line breaks with <br> for proper HTML formatting
+    return content
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>");
+  }
 </script>
 
 <svelte:head>
@@ -222,7 +261,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
 </svelte:head>
 
-<main class="ai-chat" class:dark-mode={isDarkMode} in:fade={{ duration: 400 }}>
+<svelte:window on:resize={handleResize} />
+
+<div class="debug-log" id="debug-log"></div>
+<main 
+class="ai-chat" 
+  class:dark-mode={isDarkMode} 
+  in:fade={{ duration: 400 }}
+  >
   <NavBar title = "Rhea"/>
   
   <div 
@@ -231,13 +277,13 @@
     on:scroll={handleScroll}
     in:fade={{ duration: 400, delay: 200 }}
   >
-    {#each messages as message (message.id)}
+    {#each $messages as message (message.id)}
       <div 
         class="message {message.role}"
         in:fly={{ y: 20, duration: 300 }}
         animate:flip={{ duration: 300 }}
       >
-        <p>{@html message.content.replace(/\n/g, '<br>')}</p>
+        <p>{@html sanitizeMessageContent(message.content)}</p>
       </div>
     {/each}
   </div>
@@ -255,7 +301,7 @@
     </button>
   {/if}
 
-  <footer class="input-area glass">
+  <footer class="input-area glass" class:keyboard-visible={isKeyboardVisible}>
     <form on:submit|preventDefault={generateResponse}>
       <textarea
         bind:this={textareaElement}
@@ -264,6 +310,8 @@
         rows="1"
         disabled={loading}
         on:input={resetTextarea}
+        on:focus={handleFocus}
+        on:blur={handleBlur}
         on:keydown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -279,9 +327,8 @@
     </form>
   </footer>
 </main>
-
 <style>
-  :global(*) {
+    :global(*) {
     font-family: 'Quicksand', sans-serif;
   }
 
@@ -355,10 +402,12 @@
   .message.user {
     align-self: flex-end;
     background-color: var(--user-message-bg);
+    max-width: 76%;
   }
 
   .message.ai, .message.system {
     align-self: flex-start;
+    max-width: 70%;
     background-color: var(--ai-message-bg);
   }
 
@@ -518,5 +567,20 @@
     font-size: 1.2em; /* Increase font size for better readability */
     line-height: 1.4; /* Adjust line height for cursive font */
   }
-</style>
+  </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
