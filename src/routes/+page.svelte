@@ -256,9 +256,7 @@
         placeholder="Type a message..."
         rows="1"
         disabled={loading}
-        on:input={(e) => {
-          resetTextarea(); // Use the resetTextarea function on input
-        }}
+        on:input={resetTextarea}
         on:keydown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -323,7 +321,12 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    scrollbar-width: thin;
+    scrollbar-width: none; /* For Firefox */
+    -ms-overflow-style: none;  /* For Internet Explorer and Edge */
+  }
+
+  .message-container::-webkit-scrollbar {
+    display: none; /* For Chrome, Safari, and Opera */
   }
 
   .message-container > :first-child {
@@ -332,15 +335,6 @@
 
   .message-container > :last-child {
     margin-bottom: 8%;
-  }
-
-  .message-container::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .message-container::-webkit-scrollbar-thumb {
-    background-color: var(--scroll-thumb);
-    border-radius: 3px;
   }
 
   .message {
@@ -372,58 +366,57 @@
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 8px; /* Reduced padding */
-    background: rgba(255, 255, 255, 0.1);
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
-    box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.1);
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .input-area form {
     display: flex;
-    gap: 8px; /* Reduced gap */
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px; /* Slightly reduced border radius */
-    padding: 4px; /* Reduced padding */
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   }
 
   textarea {
     flex-grow: 1;
-    padding: 8px 12px;
+    padding: 10px 16px;
     border: none;
     border-radius: 20px;
     resize: none;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 20px;
-    height: 36px; /* Set a fixed initial height */
+    height: 40px;
     overflow-y: hidden;
     background-color: transparent;
     color: var(--text-color);
-    backdrop-filter: blur(5px);
-    transition: height 0.2s ease; /* Add smooth transition for height changes */
-    max-height: 100px; /* Add max-height to match MAX_TEXTAREA_HEIGHT */
-    overflow-y: auto; /* Change to auto to allow scrolling when max height is reached */
+    transition: height 0.2s ease;
+    max-height: 100px;
+    overflow-y: auto;
   }
 
   .send-button {
-    width: 36px; /* Reduced width */
-    height: 36px; /* Reduced height */
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2); /* More transparent background */
-    color: var(--text-color);
+    background: var(--primary-color);
+    color: white;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: background-color 0.3s, transform 0.2s;
-    backdrop-filter: blur(5px); /* Add blur effect */
   }
 
   .send-button:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.3); /* Slightly more opaque on hover */
-    transform: scale(1.05); /* Slight scale effect on hover */
+    background: var(--secondary-color);
+    transform: scale(1.05);
   }
 
   .send-button:disabled {
@@ -432,8 +425,8 @@
   }
 
   .icon {
-    width: 18px; /* Reduced icon size */
-    height: 18px; /* Reduced icon size */
+    width: 20px;
+    height: 20px;
   }
 
   :global(.icon svg) {
@@ -442,26 +435,32 @@
 
   .scroll-to-bottom-btn {
     position: fixed;
-    bottom: 70px;
+    bottom: 13%;
     right: 20px;
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: var(--primary-color);
-    color: white;
-    border: none;
+    background: rgba(255, 255, 255, 0.1); 
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-color);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
+    z-index: 1001; 
   }
 
   .scroll-to-bottom-btn:hover {
-    background: var(--secondary-color);
+    background: rgba(255, 255, 255, 0.2);
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .scroll-to-bottom-btn .icon {
+    opacity: 0.7;
   }
 
   @media (max-width: 600px) {
