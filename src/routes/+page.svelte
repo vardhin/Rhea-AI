@@ -8,6 +8,7 @@
   import FaChevronDown from 'svelte-icons/fa/FaChevronDown.svelte';
   import NavBar from './NavBar.svelte';
   import { darkMode } from '$lib/stores';
+  import { selectedModel } from '$lib/stores';
 
   let prompt = '';
   let messages = [];
@@ -24,11 +25,17 @@
 
   let scrollTimeout;
   let lastScrollTime = 0;
-  const SCROLL_INTERVAL = 500; // ms between scroll updates
+  const SCROLL_INTERVAL = 600; // ms between scroll updates
 
   let textareaElement;
 
   const MAX_TEXTAREA_HEIGHT = '100px'; // Set a maximum height for the textarea
+
+  let currentModel;
+
+  selectedModel.subscribe(value => {
+    currentModel = value;
+  });
 
   function resetTextarea() {
     if (textareaElement) {
@@ -82,7 +89,7 @@
 
     try {
       const stream = await ollama.chat({
-        model: 'llama3.2:latest',
+        model: currentModel,
         messages: [...messageHistory, { role: 'user', content: userMessage }],
         stream: true,
       });

@@ -8,6 +8,8 @@
 	import { faArrowLeft, faSun, faMoon, faRedoAlt } from '@fortawesome/free-solid-svg-icons'; // Add reload icon
 	// Add this import for the thicker icons
 	import { faArrowLeft as faArrowLeftSolid, faSun as faSunSolid, faMoon as faMoonSolid, faRedoAlt as faRedoAltSolid } from '@fortawesome/free-solid-svg-icons';
+	import { faGear } from '@fortawesome/free-solid-svg-icons'; // Add settings icon
+	import { faGear as faGearSolid } from '@fortawesome/free-solid-svg-icons';
 
 	export let title = ''; // Ensure title is passed as a prop
 
@@ -27,12 +29,16 @@
 	const reloadPage = () => {
 		location.reload(); // Reload the page
 	};
+
+	const goToSettings = () => {
+		goto('/settings');
+	};
 </script>
 
 <nav class:dark-mode={isDarkMode}>
 	<div class="button-container">
-		<div class="back-button" on:click={goBack}>
-			<FontAwesomeIcon icon={faArrowLeftSolid} class="icon" />
+		<div class="settings-button" on:click={goToSettings}>
+			<FontAwesomeIcon icon={faGearSolid} class="icon" />
 		</div>
 		<div class="reload-button" on:click={reloadPage}>
 			<FontAwesomeIcon icon={faRedoAltSolid} class="icon" />
@@ -174,4 +180,11 @@
 		animation: moonGlow 3s infinite;
 	}
 
+	.settings-button {
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		padding: 0 3px;
+		margin: 0 3px;
+	}
 </style>
