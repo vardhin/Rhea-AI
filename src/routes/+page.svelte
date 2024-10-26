@@ -8,6 +8,7 @@
   import { darkMode, selectedModel, serverIP } from '$lib/stores';
   import { spring } from 'svelte/motion'; // Add this import
   import { writable } from 'svelte/store'; // Import writable for messages
+  import { tick } from 'svelte';
 
   let SERVER_URL = '';
 
@@ -15,9 +16,13 @@
     SERVER_URL = `http://${value}:3000`;
   });
 
+  /** @type {string} */
   let prompt = '';
-  let messages = writable([]); // Make messages a writable store
+  /** @type {import('svelte/store').Writable<Array<{role: string, content: string, id: number}>>} */
+  let messages = writable([]);
+  /** @type {boolean} */
   let loading = false;
+  /** @type {boolean} */
   let serverReady = false;
   let ollamaReady = false; // Add this line
   let messageContainer;
@@ -54,6 +59,8 @@
   darkMode.subscribe(value => {
     isDarkMode = value;
   });
+
+  let appendRate = 9; 
 
   onMount(() => {
     updateViewportHeight();
@@ -172,7 +179,7 @@
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       
-      let aiResponse = '';
+      let buffer = '';
       const aiMessageId = Date.now();
       addMessage('ai', '', aiMessageId);
 
@@ -188,15 +195,13 @@
             const content = line.slice(6);
             if (content === '[DONE]') break;
             
-            aiResponse += content;
-            messages.update(msgs => msgs.map(msg =>
-              msg.id === aiMessageId
-                ? { ...msg, content: aiResponse }
-                : msg
-            ));
-            scheduleScroll();
+            buffer += content;
           }
         }
+
+        // Append buffered text while streaming
+        await appendBufferedText(buffer, aiMessageId);
+        buffer = ''; // Clear the buffer after appending
       }
 
     } catch (error) {
@@ -207,7 +212,20 @@
       cancelScheduledScroll();
       smoothScrollToBottom();
       resetTextarea();
-      // Remove the keepFocusOnTextarea() call from here
+    }
+  }
+
+  async function appendBufferedText(buffer, messageId) {
+    const words = buffer.split(/\s+/);
+    
+    for (const word of words) {
+      messages.update(msgs => msgs.map(msg =>
+        msg.id === messageId
+          ? { ...msg, content: msg.content + word + ' ' }
+          : msg
+      ));
+      await tick();
+      await new Promise(resolve => setTimeout(resolve, 1000 / appendRate));
     }
   }
 
@@ -566,6 +584,16 @@ class="ai-chat"
     word-break: break-word;
     font-size: 1.2em;
     line-height: 1.4;
+    transition: all 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .message p:last-child {
+    animation: fadeIn 0.3s ease-out;
   }
 
   .dot-animation {
@@ -590,3 +618,13 @@ class="ai-chat"
     line-height: 1.4; /* Adjust line height for cursive font */
   }
   </style>
+
+
+
+
+
+
+
+
+
+
